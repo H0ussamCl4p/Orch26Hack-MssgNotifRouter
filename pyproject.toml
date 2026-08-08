@@ -12,7 +12,8 @@ authors = [{ name = "Choubik Houssam" }]
 requires-python = ">=3.11"
 dependencies = [
     "pandas==3.0.5",
-    "numpy==2.5.1",
+    "numpy==2.5.1; python_version >= '3.12'",
+    "numpy==2.4.6; python_version < '3.12'",
     "python-dateutil==2.9.0.post0",
     "six==1.17.0",
     "python-dotenv==1.0.1",

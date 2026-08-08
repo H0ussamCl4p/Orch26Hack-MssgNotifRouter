@@ -1,7 +1,7 @@
 # WhatsApp Message Notification Router
 
-[![Hackathon](https://img.shields.io/badge/HackerRank-Orchestrate%20Hackathon%202026-2EC866?logo=hackerrank&logoColor=white)](https://github.com/H0ussamCl4p/Orch26Hack-router)
-[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/H0ussamCl4p/Orch26Hack-router/releases)
+[![Hackathon](https://img.shields.io/badge/HackerRank-Orchestrate%20Hackathon%202026-2EC866?logo=hackerrank&logoColor=white)](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Made by Choubik Houssam](https://img.shields.io/badge/Made%20by-Choubik%20Houssam-orange)](https://github.com/H0ussamCl4p)
 
@@ -9,7 +9,7 @@ Routes every incoming WhatsApp message to **notify**, **digest**, or **mute** â€
 personalized per user, with a message type, a short reason, a calibrated
 confidence, and a historical evidence citation.
 
-> **Result: #106 / 1983 globally, score 70.9 / 100.** Solo build, 24 hours.
+> **Result: #106 / 1983 globally Â· #1 in Morocco. Score 70.9 / 100.** Solo build, 24 hours.
 > Scoring combined the agent's output, the code, and a 30-minute live technical
 > interview.
 
