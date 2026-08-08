@@ -1,6 +1,7 @@
 # WhatsApp Message Notification Router
 
 [![Hackathon](https://img.shields.io/badge/HackerRank-Orchestrate%20Hackathon%202026-2EC866?logo=hackerrank&logoColor=white)](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter)
+[![CI](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter/actions/workflows/ci.yml/badge.svg)](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/H0ussamCl4p/Orch26Hack-MssgNotifRouter/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Made by Choubik Houssam](https://img.shields.io/badge/Made%20by-Choubik%20Houssam-orange)](https://github.com/H0ussamCl4p)
