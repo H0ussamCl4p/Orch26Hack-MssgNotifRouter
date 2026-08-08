@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "whatsapp-notification-router"
+version = "1.0.0"
+description = "Deterministic-retrieval + LLM router that sorts WhatsApp messages into notify / digest / mute."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Choubik Houssam" }]
+requires-python = ">=3.11"
+dependencies = [
+    "pandas==3.0.5",
+    "numpy==2.5.1",
+    "python-dateutil==2.9.0.post0",
+    "six==1.17.0",
+    "python-dotenv==1.0.1",
+    "faster-whisper==1.2.1",
+    "google-genai==2.16.0",
+]
+
+[project.optional-dependencies]
+anthropic = ["anthropic>=0.120.0"]
+dev = ["pytest>=8", "ruff>=0.9"]
+
+[project.scripts]
+router-media = "router.media:main"
+router-run = "router.run:main"
+router-validate = "router.validate:main"
+router-evaluation = "router.evaluation:evaluate"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# E501 (line length) is disabled: the routing/vision system prompts are verbatim
+# multi-line string literals that must not be reflowed (doing so would change the
+# exact text sent to the model). Line length is enforced by convention elsewhere.
+ignore = ["E501"]

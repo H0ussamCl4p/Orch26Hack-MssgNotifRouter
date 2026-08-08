@@ -1,0 +1,8 @@
+# Normalise text to LF in the repository for cross-platform consistency.
+* text=auto eol=lf
+
+# Frozen graded artifacts: store bytes exactly as-is so their SHA-256 stays
+# verifiable on every platform (no line-ending normalisation, ever).
+results/submission_output.csv -text
+results/eval_errors.csv -text
+docs/transcript/log.txt -text

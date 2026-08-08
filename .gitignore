@@ -1,0 +1,29 @@
+# Secrets
+.env
+
+# Dataset — HackerRank's property, not redistributed. See dataset/README.md.
+/dataset/*
+!/dataset/README.md
+
+# Pipeline output (regenerated). The frozen submission_output.csv is committed.
+/results/output.csv
+
+# Caches (rebuilt locally, never committed)
+dataset/media/_cache/
+dataset/.routing_cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

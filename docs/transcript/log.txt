@@ -1,0 +1,280 @@
+
+## [2026-08-01T14:58:28+01:00] Skeleton pipeline scaffolded
+
+User Prompt (verbatim, secrets redacted):
+Session 1: build ONLY the skeleton — module structure under code/, ingest.load_all() returning named dict of 13 CSVs, run.py writing dataset/output.csv (6 cols, placeholder values), validate.py checking 110 rows/enums/confidence, pinned requirements.txt, .env via python-dotenv, no keys hardcoded. No routing logic.
+
+Agent Response Summary:
+Created code/ with separated modules (config, ingest, context, candidates, routing, consistency, evaluation) plus run.py and validate.py. load_all() loads the 12 input CSVs (output.csv is the write target, not a source). run.py emits placeholder rows (digest/unknown/placeholder/0.84/none); validate.py enforces the 6-col contract, 110 rows, enums, confidence in [0,1], evidence non-empty, id coverage. Ran end-to-end: 110 rows written, VALID.
+
+Actions:
+* wrote code/{config,ingest,context,candidates,routing,consistency,evaluation,run,validate}.py
+* wrote code/requirements.txt, .env.example, .gitignore
+* ran: python code/run.py && python code/validate.py -> VALID
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T15:02:09+01:00] context.py — per-message dossier
+
+User Prompt (verbatim, secrets redacted):
+Build context.py: for a message_id, assemble a compact dossier (user DND + engagement, group or business relationship, spoofing signal, notification load). Handle DND wrap-around past midnight with a tested in_dnd() helper. Expose domain_mismatch boolean comparing official_domain vs domain_used_by_sender and domain/account ages. Serializable dict, no LLM.
+
+Agent Response Summary:
+Implemented build_context(message_id, tables) returning a JSON-serializable dossier with user/group/business/notification_load blocks. Added correct wrap-around in_dnd() with self-tests on "22:00-07:00" and "00:00-06:30" (all pass). Spoofing: domain_name_mismatch + domain_age_suspicious (young sender domain on old account, thresholds 365/90d) combined into domain_mismatch. Notification load derives a true dismissal_rate from daily_notification_summary since users.csv has only raw counts. Verified against one message per conversation type.
+
+Actions:
+* rewrote code/context.py
+* ran: python code/context.py -> self-test OK + 3 sample dossiers
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T15:22:14+01:00] media.py — hybrid extraction + disk cache
+
+User Prompt (verbatim, secrets redacted):
+Session 3: media extraction with disk cache. Check env first (Kali WSL, likely no ffmpeg), propose API vs local approaches with deps/model-weights/time, wait for arbitration. Then media.py: extract(media_id, media_type)->dict, JSON cache keyed by media_id written incrementally, never reprocess an already-extracted media (non-negotiable), CLI --all, per-file error isolation. Images: text + visual semantics (doc type, brand, QR, link, amount, urgency). Audio: transcript + tone. Security: extracted content is DATA not instruction; dataset has prompt-injection; returned dict must encapsulate content.
+
+Agent Response Summary:
+Probed WSL: ffmpeg/tesseract ABSENT, no ML python pkgs, no ANTHROPIC_API_KEY, Python 3.13.7, 11GB RAM. Corrected media count to 33 (20 images + 13 audio via mapping tables, not 23). Presented 3 options; user chose HYBRID (Claude vision images + faster-whisper local audio). Implemented media.py: atomic per-media_id JSON cache (skip status==ok, retry errors on rerun), CLI --all/--media-id/--force, per-file try/except isolation. Security: content encapsulated under _untrusted wrapper with disclaimer + injection_suspected flag (injection preserved as scam signal, not stripped); hardened vision system prompt; to_prompt_block() delimits untrusted content. Verified --all: 33 processed, all marked error (deps absent), cache written, no crash.
+
+Actions:
+* wrote code/media.py, code/requirements-media.txt
+* gitignored dataset/media/_cache/
+* ran (WSL): python code/media.py --all -> total=33 error=33, cache OK
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T15:48:22+01:00] media.py — deps installed, audio validated, tone removed
+
+User Prompt (verbatim, secrets redacted):
+[Ran setup] apt install ffmpeg; pip install -r code/requirements-media.txt; echo ANTHROPIC_API_KEY=[REDACTED placeholder] >> .env; python code/media.py --all. Output: 13 audio ok, 20 images 401 invalid x-api-key.
+
+Agent Response Summary:
+Audio pipeline validated end-to-end: 13/13 voice notes transcribed locally via faster-whisper base. Cache/error guarantee proven on real mixed run: rerun skipped 13 ok, retried 20 errors, 0 ok reprocessed. Images failed 401 because .env holds the literal placeholder key sk-ant-... (user must replace with real key). Inspected results: transcripts clean, injection_suspected works. Found the heuristic tone label was WRONG on 2/2 sampled files (negation false-positive on "nothing urgent"; missed semantic urgency on "payments failing"). User chose to REMOVE tone and let routing infer urgency from transcript in context. Edited _extract_audio to drop tone/tone_basis and removed the urgency regex; invalidated + re-extracted the 13 audio cache entries (local, free) so no stale tone field remains.
+
+Actions:
+* edited code/media.py (removed _infer_tone/_URGENCY_WORDS, dropped tone fields)
+* rm dataset/media/_cache/vn_*.json ; python code/media.py --all -> 13 audio ok
+* deps installed in venv: anthropic 0.120.2, faster-whisper 1.2.1 (+ ffmpeg 7:8.1.1)
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T15:53:50+01:00] media.py — pluggable vision backend, Gemini free tier
+
+User Prompt (verbatim, secrets redacted):
+can we use a free model api ?
+
+Agent Response Summary:
+Noted the image extraction is only 20 one-time calls (~cents on Anthropic), so "free" mainly helps if no billing is set up. Recommended Google Gemini free tier (AI Studio, no card) as the best free vision option; user chose it. Made the vision backend pluggable via MEDIA_VISION_PROVIDER (gemini default | anthropic), added _vision_gemini via google-genai (forces response_mime_type=application/json), kept _vision_anthropic. Audio path unchanged (local faster-whisper). Same hardened system prompt, same untrusted wrapper. Installed google-genai; verified wiring: provider=gemini model=gemini-2.5-flash, images now reach Gemini (auth error = missing key, not import error), 13 audios skipped from cache. User still needs a free GEMINI_API_KEY in .env.
+
+Actions:
+* edited code/media.py: pluggable VISION_PROVIDER, _vision_gemini/_vision_anthropic, _mime_of, extractor label
+* updated code/requirements-media.txt (google-genai for gemini path)
+* pip install google-genai ; python code/media.py --all -> wiring verified
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T16:31:54+01:00] media.py — Gemini rate limits, RECITATION, switched default to Gemma 4
+
+User Prompt (verbatim, secrets redacted):
+[iterating on Gemini vision] what about using gemma4 ? api
+
+Agent Response Summary:
+Real Gemini run extracted 19/20 images ok on gemini-3.6-flash but surfaced: (1) free-tier daily cap of 20 req/day for 3.6-flash, (2) img_012 blocked by finish_reason=RECITATION (Gemini refusing to reproduce known poster text), (3) empty resp.text crashed parser -> hardened _vision_gemini to surface finish_reason/prompt_feedback. Added rate-limit retry with backoff (honors server retryDelay) for 429. User asked about Gemma 4: probed gemma-4-31b-it and gemma-4-26b-a4b-it on img_012 -> both accept image (vision OK), finish_reason=STOP (NO recitation filter), higher free quota. Confirmed Gemma supports neither system_instruction nor JSON mode, so added a gemma branch that folds the hardened prompt into the user turn and relies on defensive fence-tolerant JSON parsing. Made gemma-4-31b-it the default vision model. Re-extracted img_012 -> ok. All 33 media now cached ok (19 gemini-3.6-flash + 1 gemma-4-31b-it + 13 whisper base).
+
+Actions:
+* edited code/media.py: default model gemma-4-31b-it, gemma-vs-gemini branch, empty-response diagnostics, _call_with_rate_limit_retry
+* extracted img_012 via gemma -> ok; verified cache: 33/33 ok
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T16:35:29+01:00] candidates.py — metadata retrieval + event enrichment
+
+User Prompt (verbatim, secrets redacted):
+oui [proceed with candidates.py]
+
+Agent Response Summary:
+Implemented select_candidates(message_id, tables, limit=10): pool = receiving user's own message_history, scored by metadata match (same business/group/sender = 3, same conversation_type = 1, same media_type = 1) with recency tiebreak; broadens to same-conv-type then whole history if too few strong matches. Each candidate enriched with the user's reaction from message_events (opened/replied/reaction_time/dismissed/muted_after/reported) — the signal that makes evidence useful. Fixed an itertuples bug (leading-underscore work columns get renamed positionally) by using match_score/sort_ts. Verified quality: business msg_023 surfaces past HDFC messages the user opened; personal msg_091 surfaces a past phishing msg the user dismissed+muted+reported (relevance 4). Coverage: 110/110 messages get >=1 candidate (avg 6.23, range 2-10).
+
+Actions:
+* rewrote code/candidates.py
+* verified: python code/candidates.py + coverage stats over 110 messages
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T16:39:51+01:00] candidates.py Session 4 — get_candidates + first_contact + diagnostic
+
+User Prompt (verbatim, secrets redacted):
+Session 4: candidates for evidence_message_ids. get_candidates(message_id, tables) returns ordered list (max 12) with text+behavioral signals, plus first_contact bool. Precision over recall. Filter: user_id mandatory, then same business/group/sender, broaden to conversation_type only if too few. Enrich with message_events (opened/replied/dismissed/muted_after/reported). Muted/reported precedents rank to top. Empty list + first_contact=True is legitimate; never broaden to arbitrary matches. No vector/LLM. Add a diagnostic over 110 messages.
+
+Agent Response Summary:
+Rewrote candidates.py per spec. get_candidates returns {first_contact, candidates}. first_contact = no history with the primary counterparty (business_id/group_id/sender_user_id). Removed the previous "whole user history" last-resort fallback (violated precision). Broadening to same conversation_type happens ONLY when a relationship exists but has <3 rows — never on first contact. Sort key: neg_signal (muted_after or reported) first, then relevance (counterparty=2 vs conv_type=1, +sender +media bonuses), then recency. Added diagnose(tables). Result over 110: avg 6.14, max 12, zero_candidates=6, first_contact_count=6, zero_but_not_first_contact=0 (invariant holds: zeros are exactly first contacts). 5.5% first-contact aligns with sample's 2/30 none. Example msg_091: muted+reported phishing precedent ranks on top.
+
+Actions:
+* rewrote code/candidates.py (get_candidates, diagnose)
+* verified: python code/candidates.py -> diagnostic clean, invariant holds
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T16:49:29+01:00] routing.py — Gemma 4 router with output hardening + cache
+
+User Prompt (verbatim, secrets redacted):
+oui enchaine [+ chose Gemma 4 free for routing]
+
+Agent Response Summary:
+Built routing.route_one: assembles context.build_context + candidates.get_candidates + media cache (to_prompt_block) into one prompt, calls Gemma 4 (fold system, fence parse, 429 backoff). Hardens output: action/message_type coerced to enums, confidence clamped [0,1], evidence_message_ids filtered to ids present in the candidate pool (hallucinated ids impossible). Version-guarded per-message routing cache (PROMPT_VERSION=r1) so reruns don't re-spend quota; prompt edits invalidate. Added media.load_extracted (read-only cache accessor). Fixed numpy int64 JSON serialization in prompt. Tested 5 diverse messages: msg_023 notify/payment (HDFC evidence), msg_091 mute/scam citing reported phishing precedent, msg_048 mute/scam, msg_005 notify/personal (image), msg_086 notify/event (voice). Quality strong. NOTE: confidences came out 0.92-0.98, outside the ground-truth [0.78,0.91] band -> to be calibrated in consistency.py (post-process, no LLM re-call). Launching full 110 run to build cache + first output.csv.
+
+Actions:
+* wrote code/routing.py; edited media.py (load_extracted); gitignored dataset/.routing_cache/
+* verified 5-message routing via Gemma
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T17:18:44+01:00] Full pipeline run complete + consistency.py + concurrency
+
+User Prompt (verbatim, secrets redacted):
+continue then when u finish gimme a recap text / we want a quicker way / check
+
+Agent Response Summary:
+Built consistency.py: monotonic linear rescale of confidence into ground-truth band [0.78,0.91] with p5/p95 robust clipping, rounded 2dp (no LLM). Parallelized run.py with ThreadPoolExecutor (ROUTING_WORKERS), per-message isolation (placeholder on failure, not cached). Hardened routing retry to cover transient 503/500/502 in addition to 429. Found 8 workers oversaturated free-tier RPM (40s backoffs); user chose 3 workers -> shorter backoffs, faster net. Full 110 run completed: output.csv VALID. Distribution: mute 50/notify 39/digest 21; scam 31 highest type; confidence min 0.78 max 0.91 mean 0.841 (calibration verified); evidence none 7/110. KEY GAP: we emit 2 evidence ids in 81/110 cases but ground truth strongly prefers 1 (sample 27/30 single). Next: bias evidence to a single strongest id.
+
+Actions:
+* wrote code/consistency.py; rewrote code/run.py (concurrency); edited routing.py retry (503)
+* ran ROUTING_WORKERS=3 python code/run.py -> 110/110 VALID; verified distributions
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T17:31:04+01:00] evaluation.py Session 5 — scored vs sample (measure, no fixes)
+
+User Prompt (verbatim, secrets redacted):
+Session 5: evaluation.py, priority before any fix. Score pipeline vs 30 sample labels. Metrics: acc+macro-F1 + confusion for action & message_type; evidence exact + id precision/recall with none as first-class; calibration Brier + per-bucket acc; action x type coherence. Terminal report + errors CSV. Small sample -> low precision numbers, show class supports. Do not fix anything yet.
+
+Agent Response Summary:
+Built evaluation.py: routes the 30 sample_msg via the real pipeline (eval_tables with messages=sample inputs), cached (first run ~30 Gemma calls, then API-free). Fixed a set_index/reset_index bug in coherence. RESULTS: action acc 93% (28/30), macro-F1 0.93; only errors = 2 digest->notify. message_type acc 87% (26/30), macro-F1 0.72 (dragged by spam n=1 and unknown n=1 both F1 0). Evidence is the weak spot: exact match 30%, id precision 44% (FP=27), recall 68% — driven by adding a spurious 2nd id (we emit 2 ids, gold uses 1). Calibration good: Brier 0.06, bucket acc 86/92/100% rising with confidence. Coherence: 1 offender notify+promotion (sample_msg_044). KEY: user's scam-overprediction hypothesis NOT supported by labels (promotion 6/6 correct, only 1 spam->scam); the measured problem is evidence over-citation. Wrote eval_errors.csv (22 rows).
+
+Actions:
+* wrote code/evaluation.py; wrote eval_errors.csv
+* ran python code/evaluation.py (cached, no API)
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T17:36:49+01:00] Evidence fix — deterministic lexical top-1 (no re-route)
+
+User Prompt (verbatim, secrets redacted):
+continue , puis donne moi un recap text
+
+Agent Response Summary:
+Diagnosed the evidence weakness (no API): retrieval recall 86% (gold id IS in our candidate pool), but our metadata #1 matched gold only 36% and the LLM's first pick 39% — selection, not retrieval, was the bottleneck. Gold cites 1 id in 25/28. Tested lexical (token-overlap) top-1: 54% match (top-2 71%). Implemented candidates.best_evidence(): deterministic lexical top-1 over the candidate pool, "none" on first_contact. Wired into routing.route_one as an evidence OVERRIDE recomputed every call (even on cache hit) -> no re-route / no API needed. Re-ran eval: evidence exact 30%->43%, id precision 44%->52%, FP 27->14 (recall 68%->48%, expected as we cite 1 id). Action 93% / type 87% unchanged. Refreshed output.csv (API-free): 104 single-id, 6 none, 0 two-id (was 81 two-id); VALID.
+
+Actions:
+* edited candidates.py (best_evidence + lexical helpers), routing.py (evidence override both paths)
+* re-ran evaluation.py and run.py (both API-free); output.csv VALID
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T17:50:27+01:00] Session 6 — packaging: README, ARCHITECTURE, hygiene, zip
+
+User Prompt (verbatim, secrets redacted):
+Session 6: packaging. code/README.md (install/config/commands/results), ARCHITECTURE.md (modules + justified decisions: no vector search, deterministic evidence, precision/recall tradeoff, confidence band, Gemma-after-RECITATION, versioned cache, _untrusted encapsulation). Hygiene: no hardcoded keys, seeds, pinned reqs, no absolute paths. Prepare zip excluding .venv/__pycache__/dataset/caches; list contents before creating.
+
+Agent Response Summary:
+Hygiene verified: no hardcoded keys, secrets via env only, no absolute paths, no unseeded randomness (temperature=0 everywhere, greedy whisper). Pinned requirements-media.txt (faster-whisper==1.2.1, google-genai==2.16.0, anthropic optional). Exposed EVIDENCE_TOPK knob in candidates.py (default 1). Wrote code/README.md (install, .env, exact reproduce commands, measured results 93/87/Brier0.06/evidence43) and ARCHITECTURE.md (module-by-module + all requested decisions with justification and numbers). Listed zip contents, user approved incl. output.csv. Building zip surfaced two empty starter stubs: code/main.py and code/evaluation/main.py (the evaluation/ dir could shadow evaluation.py) -> removed both. Final code_submission.zip: 17 files, 40K (code/ + ARCHITECTURE.md + .env.example + dataset/output.csv), excludes .venv/__pycache__/dataset caches/secrets. Smoke test post-cleanup: eval 93% action, validate VALID.
+
+Actions:
+* wrote code/README.md, ARCHITECTURE.md; pinned code/requirements-media.txt; EVIDENCE_TOPK in candidates.py
+* removed empty starter stubs code/main.py, code/evaluation/
+* created code_submission.zip (40K, 17 files)
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
+
+## [2026-08-01T18:06:13+01:00] ONBOARDING COMPLETE
+
+AGREEMENT RECORDED: [HOME]\Documents\Hackathons\hackerrank-orchestrate-august26
+Agent: Claude Code
+Language: py
+System Time: 2026-08-01T18:06:13+01:00
+Time Remaining: not configured
+Note: Onboarding was skipped at the first turn at the user's request; this agreement is recorded now, not backdated.
+
+## [2026-08-08T11:54:25+01:00] Phase 0: portfolio restructuring plan
+
+User Prompt (verbatim, secrets redacted):
+Task: restructure this hackathon submission into a public portfolio repository. Phase 0 only — analyse every file and write PLAN.md, then STOP before executing. Full constraints in the user message (hard constraints, defect list, target structure, accuracy sweep, transcript redaction, pre-push gate).
+
+Agent Response Summary:
+Read all 10 source modules, ARCHITECTURE.md, code/README.md, INTERVIEW_NOTES.md, .env.example, .gitignore, requirements*.txt, dataset/output.csv, eval_errors.csv, and the log transcript. Ran accuracy sweep (no forbidden claims found; confirmed ARCHITECTURE.md says "plain token overlap" where code uses Jaccard — fix required). Scanned transcript for secrets (no real keys; 15 path fragment occurrences of [HOME] to redact). Computed sha256 of dataset/output.csv. Wrote PLAN.md at repo root covering: exact target tree, file-by-file mapping, all import changes, 6 defect fixes, 5 test specs with full inline fixture code, pyproject.toml/Makefile/CI structures, docs/RESULTS.md content, and the pre-push gate checklist.
+
+Actions:
+* read all source files (read-only)
+* wrote PLAN.md
+
+Context:
+tool=claude-code
+branch=main
+repo_root=[HOME]/Documents/Hackathons/hackerrank-orchestrate-august26
+worktree=main
+parent_agent=none
